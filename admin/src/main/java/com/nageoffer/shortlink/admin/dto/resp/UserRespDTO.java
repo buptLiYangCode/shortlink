@@ -1,5 +1,7 @@
 package com.nageoffer.shortlink.admin.dto.resp;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.nageoffer.shortlink.admin.common.serialize.PhoneDesensitizationSerializer;
 import lombok.Data;
 
 /*
@@ -17,6 +19,7 @@ public class UserRespDTO {
     private String realName;
 
     // 手机号码
+    @JsonSerialize(using = PhoneDesensitizationSerializer.class)
     private String phone;
 
     // 邮箱地址
