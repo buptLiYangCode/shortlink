@@ -1,5 +1,6 @@
 package com.nageoffer.shortlink.admin.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -11,9 +12,12 @@ import com.nageoffer.shortlink.admin.dto.resp.UserRespDTO;
 import com.nageoffer.shortlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import static com.nageoffer.shortlink.admin.common.constant.RedisCacheConstant.LOCK_USER_REGISTER_KEY;
 import static com.nageoffer.shortlink.admin.common.enums.UserErrorCodeEnum.*;
 
 /*
@@ -23,6 +27,7 @@ import static com.nageoffer.shortlink.admin.common.enums.UserErrorCodeEnum.*;
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements UserService {
 
+    private final RedissonClient redissonClient;
     private final RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
     @Override
     public UserRespDTO getUserByUserName(String username) {
@@ -46,12 +51,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         if (hasUserName(requestParam.getUsername())) {
             throw new ClientException(USER_NAME_EXIST);
         }
-        UserDO userDO = new UserDO();
-        BeanUtils.copyProperties(requestParam, userDO);
-        int insert = baseMapper.insert(userDO);
-        if (insert < 1) {
-            throw new ClientException(USER_SAVE_ERROR);
+        RLock lock = redissonClient.getLock(LOCK_USER_REGISTER_KEY + requestParam.getUsername());
+        try {
+            if (lock.tryLock()){
+                System.out.println("成功获取锁--------------------");
+                int insert = baseMapper.insert(BeanUtil.toBean(requestParam, UserDO.class));
+                if (insert < 1) {
+                    throw new ClientException(USER_SAVE_ERROR);
+                }
+                userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());
+                return;
+            }
+
+            throw new ClientException(USER_NAME_EXIST);
+        }finally {
+                lock.unlock();
         }
-        userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());
+
     }
 }
