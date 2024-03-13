@@ -1,6 +1,6 @@
 package com.nageoffer.shortlink.admin.dao.entity;
 
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 import java.util.Date;
@@ -8,6 +8,7 @@ import java.util.Date;
 @Data
 @TableName("t_user")
 public class UserDO {
+    @TableId(type = IdType.AUTO)
     // 用户ID
     private Long id;
 
@@ -28,13 +29,13 @@ public class UserDO {
 
     // 删除时间
     private Long deletionTime;
-
+    @TableField( fill = FieldFill.INSERT)
     // 创建时间
     private Date createTime;
-
+    @TableField( fill = FieldFill.INSERT_UPDATE)
     // 更新时间
     private Date updateTime;
-
+    @TableField( fill = FieldFill.INSERT)
     // 删除标记（0代表未删除，1代表已删除）
     private Integer delFlag;
 
